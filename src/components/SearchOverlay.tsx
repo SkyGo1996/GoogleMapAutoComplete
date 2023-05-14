@@ -1,9 +1,9 @@
 import { Button, Icon, InputItem } from '@ant-design/react-native'
 import React, { useContext, useEffect, useState } from 'react'
-import { ActivityIndicator, Alert, FlatList, ListRenderItem, Platform, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native'
+import { ActivityIndicator, Alert, Platform, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import { useAppDispatch, useAppSelector } from '../redux/hooks'
-import { IAddress, deleteAddresses, fetchAddresses, loadAddressesFromLocal } from '../redux/slices/AddressSlices'
-import { ILocationContent, LocationContext } from '../screens/main'
+import { IAddress, removeSearchAddresses, fetchAddresses, loadAddressesFromLocal } from '../redux/slices/AddressSlices'
+import { LocationContext } from '../screens/main'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import Animated, { useSharedValue, withTiming } from 'react-native-reanimated'
 
@@ -14,20 +14,15 @@ interface ISearchOverlay {
 const SearchOverlay:React.FC<ISearchOverlay> = ({ loading }) => {
   const appDispatch = useAppDispatch()
   const appSelector = useAppSelector(state => state.addresses)
-  const useLocationContent = useContext(LocationContext)
   const { height } = useWindowDimensions()
   const [ focusing, setFocusing ] = useState(false)
   const listHeight = useSharedValue(0)
 
   const _loadAddresses = async (query: string) => {
-    console.log('q = '+query)
-
     if(query.length > 0){
       appDispatch(fetchAddresses(query))
     } else {
-      console.log('here call')
       const localAddresses = await AsyncStorage.getItem('addressesSave')
-      // console.log('sd = '+localAddresses)
       if(localAddresses){
         const localAddressesJSON = JSON.parse(localAddresses)
         appDispatch(loadAddressesFromLocal(localAddressesJSON))
@@ -50,11 +45,8 @@ const SearchOverlay:React.FC<ISearchOverlay> = ({ loading }) => {
     ])
   }
 
-  // useEffect(() => {
-  //   _loadAddresses(appSelector.query)
-  // }, [appSelector.query])
-
   useEffect(() => {
+    // autocomplete animation
     if(appSelector.addrArr.length > 0){
       listHeight.value = withTiming(height * 0.5, {
         duration: 500
@@ -69,15 +61,14 @@ const SearchOverlay:React.FC<ISearchOverlay> = ({ loading }) => {
   return (
     loading ? <View/> :
     <View style={styles.WholeContainer}>
-      {/* <TextInput style={{ margin: 5, padding: 10, borderWidth: 1 }}/> */}
       <View style={styles.Container}>
         <InputItem
           placeholder='Search Address...'
           extra={
-            <TouchableOpacity style={styles.SearchIconContainer}>
+            <View style={styles.SearchIconContainer}>
               <Icon name='search' color='white'/>
-            </TouchableOpacity>}
-          style={[styles.SearchInput, { borderColor: focusing ? '#3875F6' : 'grey',  }]}
+            </View>}
+          style={[styles.SearchInput, { borderColor: focusing ? '#3875F6' : 'grey'}]}
           onChangeText={_loadAddresses}
           autoCorrect={false}
           onFocus={() => {
@@ -94,7 +85,7 @@ const SearchOverlay:React.FC<ISearchOverlay> = ({ loading }) => {
           appSelector.loading ?
           <ActivityIndicator size='large'/> :
           appSelector.error ?
-          <Text style={{ color: 'red', textAlign: 'center', marginVertical: 10 }}>{appSelector.error}</Text> :
+          <Text style={styles.ErrorText}>{appSelector.error}</Text> :
           <View>
             {
               appSelector.addrArr.length > 0 && appSelector.query.length == 0? 
@@ -111,7 +102,7 @@ const SearchOverlay:React.FC<ISearchOverlay> = ({ loading }) => {
             }
             <Animated.FlatList
               data={appSelector.addrArr}
-              renderItem={({ item }) => <SearchResultItem item={item} useLocationContent={useLocationContent}/>}
+              renderItem={({ item }) => <SearchResultItem item={item}/>}
               style={{ maxHeight: listHeight}}
             />
           </View>
@@ -122,13 +113,13 @@ const SearchOverlay:React.FC<ISearchOverlay> = ({ loading }) => {
 }
 
 interface ISearchResultItem {
-  item: IAddress,
-  useLocationContent: ILocationContent
+  item: IAddress
 }
 
-const SearchResultItem:React.FC<ISearchResultItem> = ({ item, useLocationContent }) => {
+const SearchResultItem:React.FC<ISearchResultItem> = ({ item }) => {
   const { fontScale } = useWindowDimensions()
   const appDispatch = useAppDispatch()
+  const useLocationContent = useContext(LocationContext)
 
   const _saveToLocal = async () => {
     const storedAddresses = await AsyncStorage.getItem('addressesSave')
@@ -139,12 +130,11 @@ const SearchResultItem:React.FC<ISearchResultItem> = ({ item, useLocationContent
         const foundAddrIndex = addrArr.findIndex((addr) => addr.lon == item.lon && addr.lat == item.lat)
 
         if(foundAddrIndex == -1){
-          // if(addrArr.length == 5){
-          //   addrArr.pop()
-          // } 
           newAddrArr = [ item, ...addrArr ]
         } else {
-          newAddrArr = addrArr
+          // set latest search to first element
+          addrArr.splice(foundAddrIndex, 1)
+          newAddrArr = [ item, ...addrArr ]
         }
       } else {
         newAddrArr = [ item ]
@@ -156,22 +146,44 @@ const SearchResultItem:React.FC<ISearchResultItem> = ({ item, useLocationContent
     }
   }
 
+  const _deleteSearchHistory = (history: IAddress) => {
+    Alert.alert("Delete", `Are you sure you want to delete ${history.display_name}?`, [
+      {
+        text: "Yes",
+        onPress: async () => {
+          const addrArr = await AsyncStorage.getItem('addressesSave')
+
+          if(addrArr){
+            let addrArrJson = JSON.parse(addrArr)
+            if(Array.isArray(addrArrJson)){
+              const newArr = addrArrJson.filter(addr => !(addr.lon == history.lon && addr.lat == history.lat))
+              await AsyncStorage.setItem('addressesSave', JSON.stringify(newArr))
+              appDispatch(loadAddressesFromLocal(newArr))
+            }
+          }
+        }
+      },
+      {
+        text: "No"
+      }
+    ])
+  }
+
   return (
-    <Button style={{ marginVertical: 5, marginHorizontal: 20, borderWidth: 0, height: 40 * fontScale }} 
+    <Button style={[ styles.ItemButton, { height: 40 * fontScale } ]} 
       onPress={() => {
         useLocationContent.setLocation({
           lat: item.lat,
           lon: item.lon
         })
         _saveToLocal()
-        appDispatch(deleteAddresses())
+        appDispatch(removeSearchAddresses())
       }}
-      
+      onLongPress={() => {_deleteSearchHistory(item)}}
     >
       <Text 
-        style={{ textAlign: 'left', width: '100%', fontSize: 16, color: 'black' }} 
+        style={styles.ItemButtonText} 
         numberOfLines={2}>{item.display_name}</Text>
-      {/* {item.display_name} */}
     </Button>
   )
 }
@@ -227,6 +239,22 @@ const styles = StyleSheet.create({
     shadowOffset: {width: 2, height: 4},
     shadowOpacity: 0.2,
     shadowRadius: 3,
+  },
+  ErrorText: {
+    color: 'red', 
+    textAlign: 'center', 
+    marginVertical: 10
+  },
+  ItemButton: {
+    marginVertical: 5, 
+    marginHorizontal: 20, 
+    borderWidth: 0,
+  },
+  ItemButtonText: {
+    textAlign: 'left', 
+    width: '100%', 
+    fontSize: 16, 
+    color: 'black'
   }
 })
 

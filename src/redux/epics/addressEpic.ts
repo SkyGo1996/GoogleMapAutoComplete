@@ -1,6 +1,6 @@
-import { createAction, Action } from '@reduxjs/toolkit'
-import { Observable, catchError, debounce, debounceTime, delay, filter, map, mergeMap, repeat, startWith, switchMap, takeUntil } from 'rxjs'
-import { IAddress, fetchAddressFailed, fetchAddressFulfilled, fetchAddressLoading, loadAddressesFromLocal } from '../slices/AddressSlices'
+import { Action } from '@reduxjs/toolkit'
+import { Observable, catchError, debounceTime, filter, map, repeat, switchMap, takeUntil } from 'rxjs'
+import { IAddress, fetchAddressFailed, fetchAddressFulfilled, loadAddressesFromLocal } from '../slices/AddressSlices'
 import { ajax } from 'rxjs/ajax'
 import { fetchAddresses } from '../slices/AddressSlices'
 
@@ -18,7 +18,6 @@ const epic = (action$: Observable<Action>) => {
             filter(loadAddressesFromLocal.match)
         )),
         repeat()
-        // startWith(fetchAddressLoading())
     )
 }
 

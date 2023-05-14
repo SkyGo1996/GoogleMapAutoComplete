@@ -41,7 +41,6 @@ export const addressSlice = createSlice({
             state.error = null
         },
         fetchAddressFulfilled: (state, action: PayloadAction<IAddress[]>) => {
-            console.log('fulllll')
             state.loading = false
             state.addrArr = action.payload
         },
@@ -49,15 +48,10 @@ export const addressSlice = createSlice({
             state.loading = false
             state.error = action.payload
         },
-        fetchAddressLoading: (state) => {
-            state.loading = true
-            state.error = null
-        },
-        deleteAddresses: (state) => {
+        removeSearchAddresses: (state) => {
             state.addrArr = []
         },
         loadAddressesFromLocal: (state, action: PayloadAction<IAddress[]>) => {
-            console.log('helllllll')
             state.loading = false
             state.error = null
             state.addrArr = action.payload
@@ -66,6 +60,6 @@ export const addressSlice = createSlice({
     },
 })
 
-export const { fetchAddresses, fetchAddressFulfilled, fetchAddressFailed, fetchAddressLoading, deleteAddresses, loadAddressesFromLocal } = addressSlice.actions
+export const { fetchAddresses, fetchAddressFulfilled, fetchAddressFailed, removeSearchAddresses, loadAddressesFromLocal } = addressSlice.actions
 export const selectAddresses = (state: RootState) => state.addresses
 export default addressSlice.reducer 

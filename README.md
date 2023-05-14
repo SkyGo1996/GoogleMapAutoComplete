@@ -16,3 +16,8 @@ Can straight run with "npm run android" in terminal
   <li>Run "npm run ios"</li>
 </ol>
 
+<h3>Features</h3>
+<ol>
+  <li>Save search histories - Search histories will display when there is no query in searchbox</li>
+  <li>Set map location based on address query from user</li>
+</ol>
