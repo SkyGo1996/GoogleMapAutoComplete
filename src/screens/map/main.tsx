@@ -1,7 +1,7 @@
 import { View } from "react-native"
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { WebView } from 'react-native-webview'
-import SearchOverlay from "../components/SearchOverlay"
+import SearchOverlay from "../../components/map/SearchOverlay"
 import { createContext, useState } from "react"
 
 interface ILocation {

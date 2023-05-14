@@ -1,9 +1,9 @@
 import { Button, Icon, InputItem } from '@ant-design/react-native'
 import React, { useContext, useEffect, useState } from 'react'
 import { ActivityIndicator, Alert, Platform, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
-import { useAppDispatch, useAppSelector } from '../redux/hooks'
-import { IAddress, removeSearchAddresses, fetchAddresses, loadAddressesFromLocal } from '../redux/slices/AddressSlices'
-import { LocationContext } from '../screens/main'
+import { useAppDispatch, useAppSelector } from '../../redux/hooks'
+import { IAddress, removeSearchAddresses, fetchAddresses, loadAddressesFromLocal } from '../../redux/slices/AddressSlices'
+import { LocationContext } from '../../screens/map/main'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import Animated, { useSharedValue, withTiming } from 'react-native-reanimated'
 
