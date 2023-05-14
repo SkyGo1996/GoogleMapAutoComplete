@@ -120,6 +120,7 @@ const SearchResultItem:React.FC<ISearchResultItem> = ({ item }) => {
   const { fontScale } = useWindowDimensions()
   const appDispatch = useAppDispatch()
   const useLocationContent = useContext(LocationContext)
+  const appSelector = useAppSelector(state => state.addresses)
 
   const _saveToLocal = async () => {
     const storedAddresses = await AsyncStorage.getItem('addressesSave')
@@ -147,26 +148,28 @@ const SearchResultItem:React.FC<ISearchResultItem> = ({ item }) => {
   }
 
   const _deleteSearchHistory = (history: IAddress) => {
-    Alert.alert("Delete", `Are you sure you want to delete ${history.display_name}?`, [
-      {
-        text: "Yes",
-        onPress: async () => {
-          const addrArr = await AsyncStorage.getItem('addressesSave')
-
-          if(addrArr){
-            let addrArrJson = JSON.parse(addrArr)
-            if(Array.isArray(addrArrJson)){
-              const newArr = addrArrJson.filter(addr => !(addr.lon == history.lon && addr.lat == history.lat))
-              await AsyncStorage.setItem('addressesSave', JSON.stringify(newArr))
-              appDispatch(loadAddressesFromLocal(newArr))
+    if(appSelector.query.length == 0){
+      Alert.alert("Delete", `Are you sure you want to delete ${history.display_name}?`, [
+        {
+          text: "Yes",
+          onPress: async () => {
+            const addrArr = await AsyncStorage.getItem('addressesSave')
+  
+            if(addrArr){
+              let addrArrJson = JSON.parse(addrArr)
+              if(Array.isArray(addrArrJson)){
+                const newArr = addrArrJson.filter(addr => !(addr.lon == history.lon && addr.lat == history.lat))
+                await AsyncStorage.setItem('addressesSave', JSON.stringify(newArr))
+                appDispatch(loadAddressesFromLocal(newArr))
+              }
             }
           }
+        },
+        {
+          text: "No"
         }
-      },
-      {
-        text: "No"
-      }
-    ])
+      ])
+    }
   }
 
   return (
