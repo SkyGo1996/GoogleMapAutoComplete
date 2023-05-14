@@ -1,7 +1,6 @@
-import { Text, TextInput, View } from "react-native"
+import { View } from "react-native"
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { WebView } from 'react-native-webview'
-import MyBottomSheet from "../components/MyBottomSheet"
 import SearchOverlay from "../components/SearchOverlay"
 import { createContext, useState } from "react"
 
@@ -18,12 +17,6 @@ export const LocationContext = createContext<ILocationContent>({
   setLocation: () => {}
 })
 
-const jsCode = "javascript:(function() { " +
-// "document.getElementsByTagName('div')[26].style.display = 'none'; " +
-// "document.getElementsByTagName('form')[0].style.display = 'none'; " +
-"document.getElementById('searchbox').style.display='none';"
-"})()"
-
 const Main = () => {
   const insets = useSafeAreaInsets()
   const [ location, setLocation ] = useState<ILocation | undefined>()
@@ -34,13 +27,10 @@ const Main = () => {
       <LocationContext.Provider value={{ setLocation }}>
         <SearchOverlay loading={webLoading}/>
       </LocationContext.Provider>
-      <WebView source={{ uri: `http://maps.google.com/maps?q=${location?.lat},${location?.lon}` }} 
-        javaScriptEnabled={true}  
-        injectedJavaScript={jsCode} 
-        onMessage={(event) => {}}
+      <WebView 
+        source={{ uri: `http://maps.google.com/maps?q=${location?.lat},${location?.lon}` }} 
         onLoadEnd={() => setWebLoading(false)}
       />
-      {/* <MyBottomSheet/> */}
     </View>
   )
 }

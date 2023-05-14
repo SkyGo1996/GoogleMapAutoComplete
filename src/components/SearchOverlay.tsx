@@ -1,10 +1,11 @@
 import { Button, Icon, InputItem } from '@ant-design/react-native'
-import React, { useContext, useEffect } from 'react'
-import { ActivityIndicator, FlatList, ListRenderItem, Platform, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native'
+import React, { useContext, useEffect, useState } from 'react'
+import { ActivityIndicator, Alert, FlatList, ListRenderItem, Platform, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native'
 import { useAppDispatch, useAppSelector } from '../redux/hooks'
 import { IAddress, deleteAddresses, fetchAddresses, loadAddressesFromLocal } from '../redux/slices/AddressSlices'
 import { ILocationContent, LocationContext } from '../screens/main'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import Animated, { useSharedValue, withTiming } from 'react-native-reanimated'
 
 interface ISearchOverlay {
   loading: boolean
@@ -15,6 +16,8 @@ const SearchOverlay:React.FC<ISearchOverlay> = ({ loading }) => {
   const appSelector = useAppSelector(state => state.addresses)
   const useLocationContent = useContext(LocationContext)
   const { height } = useWindowDimensions()
+  const [ focusing, setFocusing ] = useState(false)
+  const listHeight = useSharedValue(0)
 
   const _loadAddresses = async (query: string) => {
     console.log('q = '+query)
@@ -32,9 +35,36 @@ const SearchOverlay:React.FC<ISearchOverlay> = ({ loading }) => {
     }
   }
 
+  const _deleteSearchHistories = () => {
+    Alert.alert("Delete", "Are you sure you want to delete ALL search histories?", [
+      {
+        text: "Yes",
+        onPress: async () => {
+          await AsyncStorage.removeItem('addressesSave')
+          appDispatch(loadAddressesFromLocal([]))
+        }
+      },
+      {
+        text: "No"
+      }
+    ])
+  }
+
   // useEffect(() => {
   //   _loadAddresses(appSelector.query)
   // }, [appSelector.query])
+
+  useEffect(() => {
+    if(appSelector.addrArr.length > 0){
+      listHeight.value = withTiming(height * 0.5, {
+        duration: 500
+      })
+    } else {
+      listHeight.value = withTiming(0, {
+        duration: 500
+      })
+    }
+  }, [appSelector.addrArr, height])
 
   return (
     loading ? <View/> :
@@ -47,10 +77,16 @@ const SearchOverlay:React.FC<ISearchOverlay> = ({ loading }) => {
             <TouchableOpacity style={styles.SearchIconContainer}>
               <Icon name='search' color='white'/>
             </TouchableOpacity>}
-          style={styles.SearchInput}
+          style={[styles.SearchInput, { borderColor: focusing ? '#3875F6' : 'grey',  }]}
           onChangeText={_loadAddresses}
           autoCorrect={false}
-          onFocus={() => _loadAddresses(appSelector.query)}
+          onFocus={() => {
+            setFocusing(true)
+            _loadAddresses(appSelector.query)
+          }}
+          onBlur={() => {
+            setFocusing(false)
+          }}
         />
       </View>
       <View style={[ styles.Container, styles.Card, { marginTop: 10 } ]}>
@@ -59,11 +95,26 @@ const SearchOverlay:React.FC<ISearchOverlay> = ({ loading }) => {
           <ActivityIndicator size='large'/> :
           appSelector.error ?
           <Text style={{ color: 'red', textAlign: 'center', marginVertical: 10 }}>{appSelector.error}</Text> :
-          <FlatList
-            data={appSelector.addrArr}
-            renderItem={({ item }) => <SearchResultItem item={item} useLocationContent={useLocationContent}/>}
-            style={{ maxHeight: appSelector.addrArr.length > 0 ? height * 0.5 : 0 }}
-          />
+          <View>
+            {
+              appSelector.addrArr.length > 0 && appSelector.query.length == 0? 
+              <Button 
+                type="warning" 
+                onPress={_deleteSearchHistories} 
+                style={{ width: '90%', alignSelf: "center" }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Icon name="delete" style={{ color: 'white', marginRight: 10 }}/>
+                    <Text style={{ color: 'white', fontSize: 18 }}>Delete Search Histories</Text>
+                  </View>
+                </Button>
+              : null
+            }
+            <Animated.FlatList
+              data={appSelector.addrArr}
+              renderItem={({ item }) => <SearchResultItem item={item} useLocationContent={useLocationContent}/>}
+              style={{ maxHeight: listHeight}}
+            />
+          </View>
         }
       </View>
     </View>
@@ -76,6 +127,7 @@ interface ISearchResultItem {
 }
 
 const SearchResultItem:React.FC<ISearchResultItem> = ({ item, useLocationContent }) => {
+  const { fontScale } = useWindowDimensions()
   const appDispatch = useAppDispatch()
 
   const _saveToLocal = async () => {
@@ -105,15 +157,20 @@ const SearchResultItem:React.FC<ISearchResultItem> = ({ item, useLocationContent
   }
 
   return (
-    <Button style={{ marginVertical: 5, marginHorizontal: 20, borderWidth: 0 }} onPress={() => {
-      useLocationContent.setLocation({
-        lat: item.lat,
-        lon: item.lon
-      })
-      _saveToLocal()
-      appDispatch(deleteAddresses())
-    }}>
-      <Text style={{ textAlign: 'left', width: '100%', fontSize: 16, color: 'black' }} numberOfLines={2}>{item.display_name}</Text>
+    <Button style={{ marginVertical: 5, marginHorizontal: 20, borderWidth: 0, height: 40 * fontScale }} 
+      onPress={() => {
+        useLocationContent.setLocation({
+          lat: item.lat,
+          lon: item.lon
+        })
+        _saveToLocal()
+        appDispatch(deleteAddresses())
+      }}
+      
+    >
+      <Text 
+        style={{ textAlign: 'left', width: '100%', fontSize: 16, color: 'black' }} 
+        numberOfLines={2}>{item.display_name}</Text>
       {/* {item.display_name} */}
     </Button>
   )
@@ -148,7 +205,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1, 
     borderLeftWidth: 1,
     borderBottomWidth: 1,
-    borderColor: 'grey', 
     height: 50, 
     padding: 10
   },
